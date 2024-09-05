@@ -1,48 +1,53 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const useAuth = () => {
+const In = () => {
+    const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const checkToken = async () => {
-            const accessToken = localStorage.getItem('accessToken');
-            const refreshToken = localStorage.getItem('refreshToken');
-
-            if (accessToken) {
-                
-                try {
-                    const response = await axios.get('http://localhost:4000/protected-route', {
-                        headers: { Authorization: `Bearer ${accessToken}` }
-                    });
-            
-                    console.log(response.data);
-                } catch (error) {
-                    if (error.response && error.response.status === 403) {
-                        // Handle token expiration or invalid token
-                        alert('Session expired. Please log in again.');
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('refreshToken');
-                        // Redirect to login page
-                        navigate('/');
-                    } else {
-                        console.error('An error occurred:', error);
-                    }
+        // Check authentication status
+        const checkAuth = async () => {
+            try {
+                const response = await axios.get('http://localhost:4000/protected-route', { withCredentials: true });
+                console.log(response.data); // Handle the response data if needed
+            } catch (error) {
+                if (error.response && error.response.status === 403) {
+                    // Handle token expiration or invalid token
+                    alert('Session expired. Please log in again.');
+                    navigate('/');
+                } else {
+                    console.error('An error occurred:', error);
                 }
-            } else {
-                handleLogout();
             }
         };
 
-        checkToken();
+        checkAuth();
     }, [navigate]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        navigate('/', { state: { message: 'Session expired. Please log in again.' } });
+    const logout = async () => {
+        try {
+            await axios.post('http://localhost:4000/logout', {}, { withCredentials: true });
+            // Redirect to the login page with a message
+            navigate('/', { state: { message: 'You have been logged out.' } });
+        } catch (error) {
+            console.error('Failed to log out:', error);
+        }
     };
+
+    useEffect(() => {
+        if (location.state && location.state.message) {
+            alert(location.state.message);
+        }
+    }, [location.state]);
+
+    return (
+        <div>
+            <p>Hi {location.state?.id || 'User'}. Welcome to the website</p>
+            <button onClick={logout}>LogOut</button>
+        </div>
+    );
 };
 
-export default useAuth;
+export default In;

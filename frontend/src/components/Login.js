@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -14,19 +14,40 @@ const Login = () => {
     const passwordHandler = (e) => {
         setPassword(e.target.value);
     }
-
+    
+    const handleOAuthLogin = async () => {
+        try {
+          const { data } = await axios.get('http://localhost:4000/auth/url');
+          window.location.href = data.url; 
+        } catch (err) {
+          alert('Failed to initiate OAuth login');
+        }
+      };
+    //   useEffect(() => {
+    //     // Check if the user is already logged in
+    //     const checkAuth = async () => {
+    //         try {
+    //             const response = await axios.get('http://localhost:4000/auth/logged_in', { withCredentials: true });
+    //             if (response.data.loggedIn) {
+    //                 navigate('/in', { state: { id: response.data.user.email } });
+    //             }
+    //         } catch (error) {
+    //             console.error('Error checking authentication status', error);
+    //         }
+    //     };
+    //     checkAuth();
+    // }, [navigate]);
     async function submit(e) {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:4000/login', { email, password });
-            const { accessToken, refreshToken } = response.data;
+            const response = await axios.post('http://localhost:4000/login', { email, password }, { withCredentials: true });
 
-            // Store the tokens securely
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
+            // No need to store tokens manually
+            // axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
             // Navigate to the next page
-            navigate('/in', { state: { id: email } });
+            navigate('/in', { state: { id: email } , replace : true});
+            window.addEventListener('popstate', handlePopState);
         } catch (error) {
             if (error.response && error.response.status === 401) {
                 alert('Incorrect password');
@@ -37,6 +58,18 @@ const Login = () => {
             }
         }
     }
+    const handlePopState = (event) => {
+        if (window.location.pathname === '/') {
+            navigate('/in', { replace: true });
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            // Cleanup event listener when the component unmounts
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, []);
 
     return (
         <div className="login">
@@ -53,6 +86,11 @@ const Login = () => {
             <p>OR</p>
             <br />
             <Link to="/signup">Sign Up Page</Link>
+            <button
+          className="link"
+          onClick={() => handleOAuthLogin()}>
+          Sign in with Google
+        </button>
         </div>
     );
 }
